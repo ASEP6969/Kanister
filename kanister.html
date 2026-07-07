@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanister — Gudang Video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg:#17140f;
+    --surface:#211c15;
+    --surface-2:#2a2418;
+    --line:#3a3325;
+    --amber:#e8a33d;
+    --amber-dim:#a97a2e;
+    --teal:#4c8c86;
+    --ink:#f1e9da;
+    --ink-muted:#a89b85;
+    --red:#c1443c;
+    --green:#7fa65c;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:980px;margin:0 auto;padding:36px 20px 80px;}
+
+  /* ---- header ---- */
+  .brand{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:26px;}
+  .brand h1{font-family:'Fraunces',serif;font-weight:700;font-size:2.4rem;margin:0;letter-spacing:0.5px;}
+  .brand h1 span{color:var(--amber);}
+  .brand p{color:var(--ink-muted);margin:6px 0 0;font-size:0.92rem;max-width:480px;}
+  .status-row{display:flex;gap:10px;}
+  .status-pill{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--line);padding:7px 12px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--ink-muted);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;}
+  .dot.on{background:var(--green);box-shadow:0 0 6px var(--green);}
+
+  /* ---- panels ---- */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px;}
+  .panel h2{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:600;margin:0 0 4px;}
+  .panel .sub{color:var(--ink-muted);font-size:0.82rem;margin:0 0 16px;}
+  .panel.collapsed .panel-body{display:none;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+  .chev{color:var(--ink-muted);font-size:0.8rem;transition:transform .2s;}
+  .panel.collapsed .chev{transform:rotate(-90deg);}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:640px){.field-grid{grid-template-columns:1fr;}}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:0.75rem;color:var(--ink-muted);font-family:'JetBrains Mono',monospace;}
+  .field input{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;color:var(--ink);font-size:0.87rem;font-family:'Inter',sans-serif;}
+  .field input:focus{outline:none;border-color:var(--amber-dim);}
+  .field.full{grid-column:1/-1;}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:7px;padding:10px 18px;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:filter .15s, transform .1s;}
+  .btn:active{transform:scale(0.98);}
+  .btn-amber{background:var(--amber);color:#1a1408;}
+  .btn-teal{background:var(--teal);color:#0d1a19;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-muted);}
+  .btn:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:0.45;cursor:not-allowed;}
+  .row-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+
+  .hint{font-size:0.76rem;color:var(--ink-muted);margin-top:10px;line-height:1.5;}
+  .hint b{color:var(--ink);}
+
+  /* ---- dropzone ---- */
+  .dropzone{border:1.5px dashed var(--line);border-radius:var(--radius);padding:38px 20px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;}
+  .dropzone.drag{border-color:var(--amber);background:rgba(232,163,61,0.06);}
+  .dropzone .reel{font-size:2.2rem;margin-bottom:8px;}
+  .dropzone p{margin:0;color:var(--ink-muted);font-size:0.9rem;}
+  .dropzone .fname{color:var(--amber);font-family:'JetBrains Mono',monospace;font-size:0.85rem;margin-top:10px;word-break:break-all;}
+
+  .dest-row{display:flex;gap:18px;margin:18px 0;flex-wrap:wrap;}
+  .dest-check{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--ink);cursor:pointer;}
+  .dest-check input{accent-color:var(--amber);width:16px;height:16px;}
+
+  /* ---- filmstrip progress ---- */
+  .filmstrip{margin-top:14px;}
+  .filmstrip-label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--ink-muted);margin-bottom:5px;}
+  .filmstrip-track{position:relative;height:22px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden;}
+  .filmstrip-fill{height:100%;background:linear-gradient(90deg,var(--amber-dim),var(--amber));width:0%;transition:width .2s;position:relative;}
+  .filmstrip-track::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:repeating-linear-gradient(90deg,transparent 0 10px,var(--bg) 10px 12px);opacity:0.5;pointer-events:none;mix-blend-mode:multiply;}
+  .filmstrip-track::after{content:'';position:absolute;top:2px;bottom:2px;left:0;right:0;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.35) 0 3px,transparent 3px 14px);pointer-events:none;}
+
+  /* ---- library ---- */
+  .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  .card{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);padding:16px;position:relative;}
+  .card::before{content:'';position:absolute;top:0;left:16px;right:16px;height:1px;background:repeating-linear-gradient(90deg,var(--line) 0 5px,transparent 5px 9px);}
+  .card h3{font-family:'Fraunces',serif;font-size:1rem;margin:10px 0 4px;font-weight:600;word-break:break-word;}
+  .card .meta{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--ink-muted);margin-bottom:10px;}
+  .badges{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .badge{font-size:0.68rem;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-muted);}
+  .badge.gh{color:var(--amber);border-color:var(--amber-dim);}
+  .badge.gd{color:var(--teal);border-color:var(--teal);}
+  .card-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .icon-btn{background:var(--bg);border:1px solid var(--line);color:var(--ink-muted);border-radius:6px;padding:6px 10px;font-size:0.72rem;cursor:pointer;font-family:'Inter',sans-serif;}
+  .icon-btn:hover{color:var(--ink);border-color:var(--amber-dim);}
+  .empty{color:var(--ink-muted);font-size:0.86rem;text-align:center;padding:30px 0;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--line);padding:10px 18px;border-radius:8px;font-size:0.83rem;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+  .toast.err{border-color:var(--red);color:#ffb2ac;}
+  .toast.ok{border-color:var(--green);color:#c9e6ac;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div>
+      <h1>KANIS<span>TER</span></h1>
+      <p>Gudang video pribadi. Rekaman disebar ke GitHub &amp; Google Drive, satu tautan untuk dibagikan.</p>
+    </div>
+    <div class="status-row">
+      <div class="status-pill"><span class="dot" id="dotGh"></span>GitHub</div>
+      <div class="status-pill"><span class="dot" id="dotGd"></span>Google Drive</div>
+    </div>
+  </div>
+
+  <div class="panel" id="settingsPanel">
+    <div class="panel-head" onclick="togglePanel()">
+      <div>
+        <h2>Pengaturan Koneksi</h2>
+        <p class="sub">Diperlukan sekali saja — token disimpan di penyimpanan pribadimu, tidak terlihat orang lain.</p>
+      </div>
+      <span class="chev">▾</span>
+    </div>
+    <div class="panel-body">
+      <div class="field-grid">
+        <div class="field">
+          <label>GITHUB PERSONAL ACCESS TOKEN</label>
+          <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>REPO TUJUAN (owner/repo)</label>
+          <input type="text" id="ghRepo" placeholder="namamu/gudang-video">
+        </div>
+        <div class="field full" id="createRepoRow">
+          <label>BELUM PUNYA REPO? BUAT OTOMATIS — ketik nama saja (bukan owner/repo)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="newRepoName" placeholder="gudang-video" style="flex:1;">
+            <select id="repoVisibility" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--ink);padding:0 10px;font-family:'Inter',sans-serif;font-size:0.85rem;">
+              <option value="public">Public — tautan bisa dibuka siapa saja</option>
+              <option value="private">Private — hanya kamu yang bisa akses</option>
+            </select>
+            <button class="btn btn-teal" onclick="createRepo()">Buat Repo</button>
+          </div>
+          <p class="hint" style="margin-top:6px;">Kalau tujuannya bagikan link ke orang lain, pilih <b>Public</b> — repo private membuat tautan unduh Release butuh login &amp; akses, jadi tidak bisa dibuka bebas oleh penerima.</p>
+        </div>
+        <div class="field">
+          <label>GOOGLE OAUTH CLIENT ID</label>
+          <input type="text" id="gdClientId" placeholder="xxxx.apps.googleusercontent.com">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn btn-teal" id="btnConnectDrive" onclick="connectDrive()">Hubungkan Google Drive</button>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-amber" onclick="saveSettings()">Simpan Pengaturan</button>
+        <button class="btn btn-ghost" onclick="clearSettings()">Hapus Semua Token</button>
+      </div>
+      <p class="hint">
+        <b>GitHub:</b> buat token di Settings → Developer settings → Personal access tokens (scope <b>repo</b>), tempel di atas — lalu repo-nya tidak perlu dibuat manual, cukup ketik nama di kolom "Buat Repo Otomatis". Video disimpan sebagai lampiran Release, maksimal <b>2GB per file</b>.<br>
+        <b>Google Drive:</b> buat OAuth Client ID (tipe "Web application") di Google Cloud Console, aktifkan Drive API, tambahkan domain halaman ini ke Authorized JavaScript origins. Drive menampung file jauh lebih besar — cocok untuk rekaman raksasa.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Unggah Rekaman</h2>
+    <p class="sub">Pilih atau seret video ke sini. Ukuran berapapun didukung, tergantung tujuan yang kamu pilih.</p>
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <div class="reel">🎞️</div>
+      <p>Klik atau seret file video ke sini</p>
+      <div class="fname" id="fname"></div>
+    </div>
+    <input type="file" id="fileInput" accept="video/*" style="display:none" onchange="onFilePicked(this.files[0])">
+
+    <div class="dest-row">
+      <label class="dest-check"><input type="checkbox" id="destGh" checked> Simpan ke GitHub</label>
+      <label class="dest-check"><input type="checkbox" id="destGd"> Simpan ke Google Drive</label>
+    </div>
+
+    <div class="row-actions">
+      <button class="btn btn-amber" id="btnUpload" onclick="startUpload()" disabled>Unggah &amp; Buat Tautan</button>
+    </div>
+
+    <div id="progressArea"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Koleksi Video</h2>
+    <p class="sub">Semua rekaman yang sudah kamu unggah lewat Kanister.</p>
+    <div class="lib-grid" id="libGrid"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- state ---------------- */
+let settings = { ghToken:'', ghRepo:'', gdClientId:'' };
+let gdAccessToken = null;
+let tokenClient = null;
+let selectedFile = null;
+let library = [];
+
+/* ---------------- storage helpers ---------------- */
+async function loadSettings(){
+  try{
+    const r = await window.storage.get('settings', false);
+    if(r && r.value){ settings = JSON.parse(r.value); }
+  }catch(e){ /* no settings yet */ }
+  document.getElementById('ghToken').value = settings.ghToken || '';
+  document.getElementById('ghRepo').value = settings.ghRepo || '';
+  document.getElementById('gdClientId').value = settings.gdClientId || '';
+  refreshStatusDots();
+}
+async function saveSettings(){
+  settings.ghToken = document.getElementById('ghToken').value.trim();
+  settings.ghRepo = document.getElementById('ghRepo').value.trim();
+  settings.gdClientId = document.getElementById('gdClientId').value.trim();
+  try{
+    await window.storage.set('settings', JSON.stringify(settings), false);
+    toast('Pengaturan tersimpan.', 'ok');
+  }catch(e){ toast('Gagal menyimpan pengaturan.', 'err'); }
+  refreshStatusDots();
+  setupGoogleClient();
+}
+async function clearSettings(){
+  settings = { ghToken:'', ghRepo:'', gdClientId:'' };
+  gdAccessToken = null;
+  document.getElementById('ghToken').value = '';
+  document.getElementById('ghRepo').value = '';
+  document.getElementById('gdClientId').value = '';
+  try{ await window.storage.delete('settings', false); }catch(e){}
+  refreshStatusDots();
+  toast('Semua token dihapus dari penyimpanan.', 'ok');
+}
+async function loadLibrary(){
+  try{
+    const r = await window.storage.get('library', false);
+    if(r && r.value){ library = JSON.parse(r.value); }
+  }catch(e){ library = []; }
+  renderLibrary();
+}
+async function persistLibrary(){
+  try{ await window.storage.set('library', JSON.stringify(library), false); }
+  catch(e){ toast('Gagal menyimpan koleksi.', 'err'); }
+}
+
+/* ---------------- ui helpers ---------------- */
+function togglePanel(){ document.getElementById('settingsPanel').classList.toggle('collapsed'); }
+function toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (kind||'');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.className = 'toast'; }, 3200);
+}
+function refreshStatusDots(){
+  document.getElementById('dotGh').classList.toggle('on', !!(settings.ghToken && settings.ghRepo));
+  document.getElementById('dotGd').classList.toggle('on', !!gdAccessToken);
+}
+function fmtSize(bytes){
+  if(bytes < 1024) return bytes + ' B';
+  const units = ['KB','MB','GB','TB']; let i=-1;
+  do{ bytes/=1024; i++; }while(bytes>=1024 && i<units.length-1);
+  return bytes.toFixed(1) + ' ' + units[i];
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+}
+
+/* ---------------- dropzone ---------------- */
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{
+  e.preventDefault(); dz.classList.remove('drag');
+  if(e.dataTransfer.files[0]) onFilePicked(e.dataTransfer.files[0]);
+});
+function onFilePicked(file){
+  if(!file) return;
+  selectedFile = file;
+  document.getElementById('fname').textContent = file.name + '  ·  ' + fmtSize(file.size);
+  document.getElementById('btnUpload').disabled = false;
+}
+
+/* ---------------- Google Drive auth ---------------- */
+function setupGoogleClient(){
+  if(!settings.gdClientId || typeof google === 'undefined') return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: settings.gdClientId,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: (resp)=>{
+      if(resp && resp.access_token){
+        gdAccessToken = resp.access_token;
+        refreshStatusDots();
+        toast('Google Drive terhubung.', 'ok');
+      }
+    }
+  });
+}
+function connectDrive(){
+  settings.gdClientId = document.getElementById('gdClientId').value.trim();
+  if(!settings.gdClientId){ toast('Isi Google OAuth Client ID dulu.', 'err'); return; }
+  setupGoogleClient();
+  if(tokenClient) tokenClient.requestAccessToken();
+}
+
+/* ---------------- GitHub upload (Releases API, up to 2GB/file) ---------------- */
+async function ghApi(path, opts={}){
+  const res = await fetch('https://api.github.com'+path, {
+    ...opts,
+    headers:{
+      'Authorization': 'token ' + settings.ghToken,
+      'Accept': 'application/vnd.github+json',
+      ...(opts.headers||{})
+    }
+  });
+  if(!res.ok){ const t = await res.text(); throw new Error('GitHub API error: ' + res.status + ' ' + t.slice(0,200)); }
+  return res.json();
+}
+async function createRepo(){
+  const token = document.getElementById('ghToken').value.trim();
+  const name = document.getElementById('newRepoName').value.trim();
+  const visibility = document.getElementById('repoVisibility').value;
+  if(!token){ toast('Isi GitHub Personal Access Token dulu (di atas).', 'err'); return; }
+  if(!name){ toast('Isi nama repo dulu, misalnya: gudang-video', 'err'); return; }
+  settings.ghToken = token;
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Membuat...';
+  try{
+    const repo = await ghApi('/user/repos', {
+      method:'POST',
+      body: JSON.stringify({ name, private: visibility==='private', description:'Gudang video — dibuat otomatis oleh Kanister', auto_init:true })
+    });
+    document.getElementById('ghRepo').value = repo.full_name;
+    settings.ghRepo = repo.full_name;
+    await window.storage.set('settings', JSON.stringify(settings), false);
+    refreshStatusDots();
+    toast('Repo "' + repo.full_name + '" berhasil dibuat & tersambung.', 'ok');
+  }catch(e){
+    if(e.message.includes('422')) toast('Nama repo sudah dipakai atau tidak valid. Coba nama lain.', 'err');
+    else toast('Gagal membuat repo: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Buat Repo';
+  }
+}
+async function ghGetOrCreateRelease(){
+  const tag = 'kanister-video-storage';
+  try{
+    return await ghApi(`/repos/${settings.ghRepo}/releases/tags/${tag}`);
+  }catch(e){
+    return await ghApi(`/repos/${settings.ghRepo}/releases`, {
+      method:'POST',
+      body: JSON.stringify({ tag_name: tag, name: 'Kanister Video Storage', body: 'Dibuat otomatis oleh Kanister untuk menyimpan video.', prerelease:false })
+    });
+  }
+}
+function ghUploadAsset(uploadUrlTemplate, file, onProgress){
+  return new Promise((resolve, reject)=>{
+    const uploadUrl = uploadUrlTemplate.replace('{?name,label}', '') + '?name=' + encodeURIComponent(file.name.replace(/[^a-zA-Z0-9._-]/g,'_'));
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl);
+    xhr.setRequestHeader('Authorization', 'token ' + settings.ghToken);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (e)=>{ if(e.lengthComputable) onProgress(e.loaded/e.total); };
+    xhr.onload = ()=>{
+      if(xhr.status>=200 && xhr.status<300) resolve(JSON.parse(xhr.responseText));
+      else reject(new Error('Gagal unggah ke GitHub: ' + xhr.status));
+    };
+    xhr.onerror = ()=> reject(new Error('Koneksi ke GitHub terputus.'));
+    xhr.send(file);
+  });
+}
+async function uploadToGithub(file, onProgress){
+  if(!settings.ghToken || !settings.ghRepo) throw new Error('Isi token & repo GitHub di Pengaturan Koneksi.');
+  if(file.size > 2*1024*1024*1024) throw new Error('File > 2GB tidak muat di GitHub Release. Gunakan Google Drive.');
+  const release = await ghGetOrCreateRelease();
+  const asset = await ghUploadAsset(release.upload_url, file, onProgress);
+  return { type:'github', link: asset.browser_download_url, assetId: asset.id, releaseId: release.id };
+}
+
+/* ---------------- Google Drive upload (resumable, arbitrary size) ---------------- */
+async function uploadToDrive(file, onProgress){
+  if(!gdAccessToken) throw new Error('Hubungkan Google Drive dulu di Pengaturan Koneksi.');
+  const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+    method:'POST',
+    headers:{
+      'Authorization':'Bearer ' + gdAccessToken,
+      'Content-Type':'application/json; charset=UTF-8'
+    },
+    body: JSON.stringify({ name: file.name, mimeType: file.type || 'video/mp4' })
+  });
+  if(!initRes.ok) throw new Error('Gagal memulai sesi unggah Drive: ' + initRes.status);
+  const sessionUrl = initRes.headers.get('Location');
+
+  const fileId = await new Promise((resolve, reject)=>{
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', sessionUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+    xhr.upload.onprogress = (e)=>{ if(e.lengthComputable) onProgress(e.loaded/e.total); };
+    xhr.onload = ()=>{
+      if(xhr.status>=200 && xhr.status<300) resolve(JSON.parse(xhr.responseText).id);
+      else reject(new Error('Gagal unggah ke Drive: ' + xhr.status));
+    };
+    xhr.onerror = ()=> reject(new Error('Koneksi ke Google Drive terputus.'));
+    xhr.send(file);
+  });
+
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method:'POST',
+    headers:{ 'Authorization':'Bearer ' + gdAccessToken, 'Content-Type':'application/json' },
+    body: JSON.stringify({ role:'reader', type:'anyone' })
+  });
+  const meta = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=webViewLink`, {
+    headers:{ 'Authorization':'Bearer ' + gdAccessToken }
+  }).then(r=>r.json());
+
+  return { type:'gdrive', link: meta.webViewLink, fileId };
+}
+
+/* ---------------- orchestration ---------------- */
+function makeProgressBar(labelText){
+  const wrap = document.createElement('div');
+  wrap.className = 'filmstrip';
+  wrap.innerHTML = `
+    <div class="filmstrip-label"><span>${labelText}</span><span class="pct">0%</span></div>
+    <div class="filmstrip-track"><div class="filmstrip-fill"></div></div>`;
+  document.getElementById('progressArea').appendChild(wrap);
+  return {
+    set(p){
+      wrap.querySelector('.filmstrip-fill').style.width = (p*100).toFixed(0)+'%';
+      wrap.querySelector('.pct').textContent = (p*100).toFixed(0)+'%';
+    }
+  };
+}
+
+async function startUpload(){
+  if(!selectedFile) return;
+  const wantGh = document.getElementById('destGh').checked;
+  const wantGd = document.getElementById('destGd').checked;
+  if(!wantGh && !wantGd){ toast('Pilih minimal satu tujuan penyimpanan.', 'err'); return; }
+
+  document.getElementById('btnUpload').disabled = true;
+  document.getElementById('progressArea').innerHTML = '';
+  const destinations = [];
+  const errors = [];
+
+  try{
+    if(wantGh){
+      const bar = makeProgressBar('GitHub — ' + selectedFile.name);
+      try{
+        const res = await uploadToGithub(selectedFile, p=>bar.set(p));
+        bar.set(1);
+        destinations.push(res);
+      }catch(e){ errors.push('GitHub: ' + e.message); }
+    }
+    if(wantGd){
+      const bar = makeProgressBar('Google Drive — ' + selectedFile.name);
+      try{
+        const res = await uploadToDrive(selectedFile, p=>bar.set(p));
+        bar.set(1);
+        destinations.push(res);
+      }catch(e){ errors.push('Google Drive: ' + e.message); }
+    }
+
+    if(destinations.length){
+      library.unshift({
+        id: crypto.randomUUID(),
+        title: selectedFile.name,
+        size: selectedFile.size,
+        date: new Date().toISOString(),
+        destinations
+      });
+      await persistLibrary();
+      renderLibrary();
+      toast('Video tersimpan & tautan siap dibagikan.', 'ok');
+    }
+    if(errors.length){ toast(errors.join(' | '), 'err'); }
+  } finally {
+    document.getElementById('btnUpload').disabled = false;
+  }
+}
+
+/* ---------------- library render ---------------- */
+function renderLibrary(){
+  const grid = document.getElementById('libGrid');
+  if(!library.length){ grid.innerHTML = '<div class="empty">Belum ada video. Unggah rekaman pertamamu di atas.</div>'; return; }
+  grid.innerHTML = library.map(item=>`
+    <div class="card">
+      <h3>${escapeHtml(item.title)}</h3>
+      <div class="meta">${fmtSize(item.size)} · ${fmtDate(item.date)}</div>
+      <div class="badges">
+        ${item.destinations.map(d=>`<span class="badge ${d.type==='github'?'gh':'gd'}">${d.type==='github'?'GitHub':'Google Drive'}</span>`).join('')}
+      </div>
+      <div class="card-actions">
+        ${item.destinations.map(d=>`<button class="icon-btn" onclick="copyLink('${d.link}')">Salin tautan ${d.type==='github'?'GitHub':'Drive'}</button>`).join('')}
+        <button class="icon-btn" onclick="removeEntry('${item.id}')">Hapus dari koleksi</button>
+      </div>
+    </div>
+  `).join('');
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function copyLink(link){
+  navigator.clipboard.writeText(link).then(()=> toast('Tautan disalin.', 'ok'));
+}
+async function removeEntry(id){
+  library = library.filter(x=>x.id!==id);
+  await persistLibrary();
+  renderLibrary();
+  toast('Dihapus dari koleksi (file asal tidak terhapus).', 'ok');
+}
+
+/* ---------------- init ---------------- */
+window.addEventListener('load', async ()=>{
+  await loadSettings();
+  await loadLibrary();
+  setTimeout(setupGoogleClient, 400);
+});
+</script>
+</body>
+</html>
